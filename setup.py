@@ -13,5 +13,6 @@ setup(
         'numpy>=1.14.2',
         'qutip>=4.3.1',
         'scipy>=1.1.0',
+        'pathos>=0.3.1'
     ]
 )
