@@ -2,8 +2,12 @@ import numpy as np
 import scipy as sp
 
 
-def Sf_renorm(Sf_list, f_list, t, method="trapz", trunc_freq=(0, 0), fk_list_input=None):
-
+def Sf_renorm(Sf_list: np.ndarray, f_list: np.ndarray, t, method="trapz", trunc_freq=None, fk_list_input=None):
+    """
+    "Coarse-graining" the noise spectrum at the resolution of 2pi/tau or wp
+    method: by default we use the trapz method for this renormalize, which is fast but perhaps not very accurate
+            one can also choose the sinc2 method as used in the paper
+    """
     if np.amin(t) == np.amax(t):
         f_fund = 1 / abs(t)
     else:
@@ -11,7 +15,7 @@ def Sf_renorm(Sf_list, f_list, t, method="trapz", trunc_freq=(0, 0), fk_list_inp
     if fk_list_input is not None:
         fk_list = fk_list_input
     else:
-        if np.amin(trunc_freq) == np.amax(trunc_freq):
+        if trunc_freq is None:
             f_min = np.amin(f_list)
             f_max = np.amax(f_list)
         else:

@@ -21,7 +21,7 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
                         noise_op: Union[list, q.qobj.Qobj],
                         f_list: Union[list, np.ndarray],
                         Sf_list: Union[list, np.ndarray],
-                        trunc_freq: Union[Tuple, list] = (0, 0),
+                        trunc_freq: Union[Tuple, list] = None,
                         options=q.Options(atol=1e-10, rtol=1e-10),
                         solver: str = 'qutip',
                         u0_list: np.ndarray = None,
@@ -32,29 +32,32 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
                         prop_array_fft: np.ndarray = None,
                         fk_list: Union[np.ndarray, list] = None):
     """
+    Generate a single dynamical map from 0 to tau
+    In the following, the code is conditioned on whether noise_op is a single noise op or a list of ops
     """
 
     if prop_array is None:
-            prop_array = propagator(H, t_list, options, solver=solver, u0_list=u0_list)
+        prop_array = propagator(H, t_list, options, solver=solver, u0_list=u0_list)
+    if prop_array_fft is None:
+        _, prop_array_fft = propagator_fft(prop_array, t_list, trunc_freq=None)
 
     if type(noise_op) == q.qobj.Qobj:  # If only one noise op is given -- some users may be only interested in this
 
-        if np.amax(trunc_freq) == np.amin(trunc_freq) or type(trunc_freq) != tuple:
+        if trunc_freq is None:
             trunc_freq = (np.amin(f_list), np.amax(f_list))
         dimension = noise_op.full().shape[-1]
 
         if ffts is None:  # for single noise op, ffts should be [fk_list, fft]
-            fk_list, _, fft = filter_weight(prop_array, t_list, noise_op, trunc_freq=trunc_freq)
+            fk_list, _, fft = filter_weight(prop_array, t_list, noise_op, trunc_freq=trunc_freq, prop_array_fft=prop_array_fft)
 
         elif type(ffts) == list:
             if any(x is None for x in ffts):
-                fk_list, _, fft = filter_weight(prop_array, t_list, noise_op, trunc_freq=trunc_freq)
+                fk_list, _, fft = filter_weight(prop_array, t_list, noise_op, trunc_freq=trunc_freq, prop_array_fft=prop_array_fft)
 
             else:
                 fk_list, fft = ffts
         else:
             raise Exception('no right ffts')
-
 
         # step 2, renormalize
         fk_list, Sfk_list = Sf_renorm(Sf_list, f_list, t_list, method=method, trunc_freq=trunc_freq, fk_list_input=fk_list)
@@ -75,7 +78,7 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
         fft_list = [np.array([None])] * len(noise_op)
 
         if trunc_freq.__class__ != list:  # trunc_freq in this case should also be a list
-            trunc_freq = [(0, 0)] * len(noise_op)  # if not, we will create a list
+            trunc_freq = [None] * len(noise_op)  # if not, we will create a list
 
         if ffts.__class__ == list and any(x is not None for x in ffts):  # ffts here should be lists of fk_list and fft, i.e., [fk_list_list, fft_list]
 
@@ -84,19 +87,20 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
                 fft_list[n_] = ffts[1][n_]
 
         else:
+
             if any(x is None for x in [prop_array_fft, fk_list]):
-                fk_list, prop_array_fft = propagator_fft(prop_array, t_list, trunc_freq=(0, 0))
+                fk_list, prop_array_fft = propagator_fft(prop_array, t_list, trunc_freq=None)
 
             for n_ in range(len(noise_op)):
                 fk_list_list[n_] = fk_list
                 fft_list[n_] = np.einsum('ijmkl,kl->ijm', prop_array_fft, noise_op[n_].full())
 
-                if trunc_freq[n_] != (0, 0):
+                if trunc_freq[n_] is not None:
                     argwhere = np.argwhere(fk_list_list[n_] <= trunc_freq[n_][1]).transpose()[0]
                     fk_list_list[n_] = fk_list_list[n_][argwhere]
                     fft_list[n_] = fft_list[n_][argwhere]
                     argwhere = np.argwhere(fk_list_list[n_] >= trunc_freq[n_][0]).transpose()[0]
-                    fk_list_list[n_]= fk_list_list[n_][argwhere]
+                    fk_list_list[n_] = fk_list_list[n_][argwhere]
                     fft_list[n_] = fft_list[n_][argwhere]
 
                 fk_list_list[n_], Sfk_list_list[n_] = Sf_renorm(Sf_list[n_], f_list[n_], t_list, method=method,
@@ -118,13 +122,12 @@ def generate_maps(H: Union[list, q.qobj.Qobj],
                   f_list: Union[list, np.ndarray],
                   Sf_list: Union[list, np.ndarray],
                   t_list_full: np.ndarray = None,
-                  trunc_freq: Union[Tuple, list] = (0, 0),
+                  trunc_freq: Union[Tuple, list] = None,
                   options=q.Options(atol=1e-10, rtol=1e-10),
                   solver: str = 'qutip',
                   u0_list: np.ndarray = None,
                   method: str = 'trapz',
                   prop_array: np.ndarray = None,
-                  output: str = None,
                   multicore: str ='pathos'):
 
     if t_list_full is None:
@@ -151,24 +154,14 @@ def generate_maps(H: Union[list, q.qobj.Qobj],
             system_map_list[j] = results[j-1]
 
     else:
-        fk_list = None
-        Sfk_list = None
         for j in range(len(t_list_sub)):
 
             if t_list_sub[j] == np.amin(t_list_sub):
                 system_map_list[j] = np.eye(dimension*dimension)
                 continue
 
-            if j != len(t_list_sub)-1:
-                system_map_list[j] = generate_map_single(H, t_list[0:N_expand*j+1], noise_op, f_list, Sf_list, trunc_freq=trunc_freq,
-                                                         options=options, solver=solver, u0_list=u0_list, method=method,
-                                                         prop_array=prop_array[0:N_expand*j+1], ffts=None, output='map')
-
-            else:
-                system_map_list[j], fk_list, Sfk_list = generate_map_single(H, t_list[0:N_expand*j+1], noise_op, f_list, Sf_list, trunc_freq=trunc_freq,
-                                                                            options=options, solver=solver, u0_list=u0_list, method=method,
-                                                                            prop_array=prop_array[0:N_expand*j+1], ffts=None, output='all')
-        if output == 'all':
-            return system_map_list, fk_list, Sfk_list
+            system_map_list[j] = generate_map_single(H, t_list[0:N_expand*j+1], noise_op, f_list, Sf_list, trunc_freq=trunc_freq,
+                                                     options=options, solver=solver, u0_list=u0_list, method=method,
+                                                     prop_array=prop_array[0:N_expand*j+1], ffts=None, output='map')
 
     return system_map_list

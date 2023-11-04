@@ -45,7 +45,7 @@ class KeldyshSolver:
                  Sf_list: Union[list, np.ndarray],
                  density0: q.qobj.Qobj = None,
                  e_ops: list = None,
-                 trunc_freq: Union[list, Tuple] = (0, 0),
+                 trunc_freq: Union[list, Tuple] = None,
                  options=q.Options(atol=1e-10, rtol=1e-10),
                  solver: str = 'qutip',
                  u0_list: np.ndarray = None,
@@ -81,6 +81,7 @@ class KeldyshSolver:
                                            N_expand + 1)
 
         self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=u0_list)
+        self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
 
         # If no specific goal is given, the goal will be speculated based on input
         if goal is None:
@@ -135,11 +136,15 @@ class KeldyshSolver:
                 self.generate_errors()
 
     def plot_filter_Sf(self):
-        # which to use? plot_filter_Sf or plot_filter_Sf_multiple?
-        if type(self.noise_ops) == q.qobj.Qobj:
 
+        if type(self.noise_ops) == q.qobj.Qobj:
             if any(x is None for x in [self.fk_list, self.filter_strength]):
-                self.fk_list, self.filter_strength, self.fft = filter_weight(self.prop_array, self.t_list_full, self.noise_ops, self.trunc_freq)
+                if self.prop_array_fft is None:
+                    if self.prop_array is None:
+                        self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=self.u0_list)
+                    self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+                self.fk_list, self.filter_strength, self.fft = filter_weight(self.prop_array, self.t_list_full, self.noise_ops,
+                                                                             self.trunc_freq, prop_array_fft=self.prop_array_fft)
 
             ax = plot_filter_Sf(self.H, self.t_list_full, self.noise_ops, self.f_list, self.Sf_list, trunc_freq=self.trunc_freq,
                                 options=self.options, solver=self.solver, u0_list=self.u0_list, filters=[self.fk_list, self.filter_strength])
@@ -147,12 +152,12 @@ class KeldyshSolver:
         elif type(self.noise_ops) == list:
 
             if type(self.trunc_freq) != list:
-                trunc_freq_list = [(0, 0)] * len(self.noise_ops)
+                trunc_freq_list = [None] * len(self.noise_ops)
             else:
                 trunc_freq_list = self.trunc_freq
 
             if any(x is None for x in [self.fk_list_full, self.prop_array_fft]):
-                self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=(0, 0))
+                self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
 
             if any(x is None for x in [self.fk_list, self.filter_strength]):
 
@@ -171,7 +176,7 @@ class KeldyshSolver:
 
                     self.fk_list[n_] = self.fk_list_full
 
-                    if trunc_freq_list[n_] != (0, 0):
+                    if trunc_freq_list[n_] is not None:
                         argwhere = np.argwhere(self.fk_list[n_] <= trunc_freq_list[n_][1]).transpose()[0]
                         self.fk_list[n_] = self.fk_list[n_][argwhere]
                         self.fft[n_] = self.fft[n_][argwhere]
@@ -195,8 +200,8 @@ class KeldyshSolver:
         if self.prop_array is None:
             self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=self.u0_list)
 
-        if type(self.noise_ops) == list:
-            self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=(0, 0))
+        if any(x is None for x in [self.fk_list_full, self.prop_array_fft]):
+            self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
 
         self.kdshmap_final, self.fk_list, self.Sfk_list = generate_map_single(self.H, self.t_list_full, self.noise_ops,
                                                                               self.f_list, self.Sf_list, trunc_freq=self.trunc_freq,
@@ -213,7 +218,7 @@ class KeldyshSolver:
         self.kdshmap_list = generate_maps(self.H, self.t_list_sub, self.minimal_step, self.noise_ops, self.f_list,
                                           self.Sf_list, t_list_full=self.t_list_full, trunc_freq=self.trunc_freq,
                                           options=self.options, solver=self.solver, u0_list=self.u0_list,
-                                          method=self.method, output='map')
+                                          method=self.method)
 
         return self.kdshmap_list
 
