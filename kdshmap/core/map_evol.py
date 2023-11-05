@@ -103,9 +103,8 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
                     fk_list_list[n_] = fk_list_list[n_][argwhere]
                     fft_list[n_] = fft_list[n_][argwhere]
 
-                fk_list_list[n_], Sfk_list_list[n_] = Sf_renorm(Sf_list[n_], f_list[n_], t_list, method=method,
-                                                                trunc_freq=trunc_freq[n_], fk_list_input=fk_list_list[n_])
-
+        fk_list_list[n_], Sfk_list_list[n_] = Sf_renorm(Sf_list[n_], f_list[n_], t_list, method=method,
+                                                        trunc_freq=trunc_freq[n_], fk_list_input=fk_list_list[n_])
         exp_lindb = kdshmap_nops(fft_list, Sfk_list_list, t_list)
 
         system_map = np.einsum('jk,lm->jmkl', prop_array[-1], np.conjugate(np.swapaxes(prop_array[-1], 0, 1)))
