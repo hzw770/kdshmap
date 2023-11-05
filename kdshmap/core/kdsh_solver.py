@@ -8,8 +8,7 @@ from ..utils.propagator import propagator
 from ..utils.propagator import propagator_fft
 
 from ..utils.map import filter_weight
-from ..utils.operations import damped_density, damped_densities, expect
-
+from ..utils.operations import damped_density, damped_densities, expect, decoh_error
 from .filter_func import plot_filter_Sf
 from .filter_func import plot_filter_Sf_multiple
 
@@ -32,7 +31,7 @@ class KeldyshSolver:
     density_final: q.qobj.Qobj = None
     expect: list = None
     error_list = None
-    error_final = None
+    error_final: float = None
     fft: list = None
     e_ops: list = None
 
@@ -224,7 +223,18 @@ class KeldyshSolver:
 
     def generate_error_final(self):
 
-        return None
+        if self.prop_array is None:
+            self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=self.u0_list)
+
+        if self.kdshmap_final is None:
+            self.generate_map_final()
+
+        dimension = self.prop_array[-1].shape[-1]
+
+        decoh_map = np.einsum('jk,lm->jmkl', np.conjugate(np.swapaxes(self.prop_array[-1], 0, 1)), self.prop_array[-1])
+        decoh_map = np.matmul(decoh_map.reshape(dimension*dimension, dimension*dimension), self.kdshmap_final)
+        self.error_final = decoh_error(decoh_map).real
+        return self.error_final
 
     def generate_errors(self):
 

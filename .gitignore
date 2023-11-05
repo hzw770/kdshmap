@@ -3,4 +3,4 @@
 build/
 dist/
 kdshmap.egg-info/
-#kdshmap_test.ipynb
+kdshmap_example.ipynb

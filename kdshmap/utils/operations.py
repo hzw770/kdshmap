@@ -49,3 +49,10 @@ def expect(density,  e_op_list, damped_density_list=None, kdshmap_list=None, sto
         return e_map
     else:
         return e_map, damped_density_list
+
+
+def decoh_error(single_map):
+
+    dimension_sq = single_map.shape[-1]
+    return 1 - np.trace(single_map)/dimension_sq
+
