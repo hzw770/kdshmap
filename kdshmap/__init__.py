@@ -12,4 +12,4 @@ from .utils.operations import damped_density
 from .utils.operations import damped_densities
 
 from .core.error import generate_errors
-from .core.error import generate_error_single
+from .core.error import generate_error_final
