@@ -2,7 +2,6 @@ import kdshmap as kd
 import qutip as q
 import numpy as np
 import matplotlib.pyplot as plt
-
 if __name__ == "__main__":
     # Transmon parameters
     tmon_dim = 2  # transmon truncation dimension
