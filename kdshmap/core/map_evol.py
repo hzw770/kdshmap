@@ -31,9 +31,69 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
                         output: str = 'map',
                         prop_superop_array_fft: np.ndarray = None,
                         fk_list: Union[np.ndarray, list] = None):
+
     """
-    Generate a single dynamical map from 0 to tau
-    In the following, the code is conditioned on whether noise_op is a single noise op or a list of ops
+    Generate a single dynamical map to evolve the system.
+
+    Parameters:
+
+    H                           : Union[list, q.qobj.Qobj]
+                                  The Hamiltonian of the system. If a list is given, the Hamiltonian is time-dependent.
+
+    t_list                      : np.ndarray
+                                  The time list of the system. This is the time list that the system is evolved over.
+
+    noise_op                    : Union[list, q.qobj.Qobj]
+                                  The noise operator(s). If a list is given,
+                                  the system couples to the bath through multiple noise operators.
+
+    f_list                      : Union[list, np.ndarray]
+                                  The frequencies at which the noise spectrak density has been sampled.
+                                  Between these values Sf_renorm will interpolate the spectral density.
+                                  If the system couples to multiple noise operators, a list is given.
+
+    Sf_list                     : Union[list, np.ndarray]
+                                  The spectral density of the noise operator(s).
+
+    trunc_freq                  : Union[Tuple, list]
+                                  The frequency range of the noise operator(s) that will be considered in the calculation.
+
+    options                     : q.Options
+                                  Options for the solver.
+                                  Default options are q.Options(atol=1e-10, rtol=1e-10)
+
+    solver_type                 : str
+                                  The solver to be used for the propagator.
+                                  Default is 'qutip'. Other option is 'Magnus' (currently in development)
+
+    u0_list                     : np.ndarray
+                                  List of unitary transformations specifying frame transformations since it may be easier to compute
+                                  the propagator in a rotating frame. By default, the propagator is computed in the lab frame.
+
+    spd_renorm_method           : str
+                                  The spd_renorm_method used for the integration of the spectral density.
+                                  Default is 'trapz'. Other option is 'sinc'.
+
+    prop_array                  : np.ndarray
+                                  The propagator. If not given, it will be calculated.
+
+    filter_op_props             : list
+                                  A list of tuples of the filter frequencies and corresponding filter superoperators.
+
+    output_type                 : str
+                                  The output_type of the function.
+                                  Default is 'map'. Other option is 'all'.
+
+    prop_superop_array_fft      : np.ndarray
+                                  The filter_op_props of the propagator. If not provided, it will be calculated.
+
+    fk_list                      : Union[np.ndarray, list]
+                                   The frequency list of the noise operator(s). If not provided, it will be calculated.
+
+    Returns:
+    system_map                   : np.ndarray
+                                   The Keldysh map for the given system, propagator,
+                                   noise operator(s), and spectral density.
     """
 
     if prop_array is None:

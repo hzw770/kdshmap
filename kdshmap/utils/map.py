@@ -19,7 +19,7 @@ def filter_weight(prop_array, t_list, noise_op, trunc_freq=None, prop_superop_ar
                               The noise operator
     trunc_freq              : float
                               The frequency range to truncate the filter strength to
-    prop_array_superop_fft  : numpy array
+    prop_superop_array_fft  : numpy array
                               The discrete fourier transform of the closed-system
                               superoperator which acts on the vectorized density matrix
                               (at specified frequencies)
