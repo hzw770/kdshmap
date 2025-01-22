@@ -12,7 +12,7 @@ def propagator(H, t_list, options=q.Options(atol=1e-10, rtol=1e-10), solver='qut
     """
 
     if solver == 'qutip':
-        prop_qobj = q.propagator(H, t_list, options=options, c_op_list=[])
+        prop_qobj = q.propagator(H, t_list, options=options, c_ops=[])
         prop_array = np.zeros((len(t_list), prop_qobj[0].dims[0][0], prop_qobj[0].dims[0][0]), dtype=complex)
         if u0_list is None:
             for t_ in range(len(t_list)):
@@ -65,7 +65,7 @@ def propagator_fft(prop_array, t_list, trunc_freq=None):
 def propagator_rotate(H_rot, t_list, options=q.Options(atol=1e-10, rtol=1e-10), solver='qutip'):
     # Rotated propagator in a rotating frame, will be constructed later
     if solver == 'qutip':
-        return q.propagator(H_rot, t_list, options=options, c_op_list=[])
+        return q.propagator(H_rot, t_list, options=options, c_ops=[])
     if solver == 'magnus':
         return None
 
