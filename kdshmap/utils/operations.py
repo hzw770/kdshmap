@@ -4,6 +4,17 @@ import qutip as q
 
 def damped_density(density, exp_lindb):
 
+    """
+    Given a density matrix and a Lindbladian super-operator, returns the
+    result of acting the super-operator on the density matrix.
+    Parameters:
+    density   : qutip.Qobj
+                Density matrix to be acted on.
+    exp_lindb : numpy.ndarray
+                Exponential of the Lindbladian super-operator.
+
+    """
+
     density = density.full()
     dimension = density.shape[-1]
     density = density.reshape(dimension*dimension)
@@ -14,6 +25,18 @@ def damped_density(density, exp_lindb):
 
 
 def damped_densities(density, kdshmap_list, output_type='qutip'):
+
+    """
+    Given a density matrix and a list of Keldysh maps, depending on the specified output_type,
+    either returns a numpy array or a Qobj of the Keldysh maps applied to the density matrix.
+    Parameters:
+    density      : qutip.Qobj
+                   Density matrix to be acted on.
+    kdshmap_list : list of numpy.ndarrays
+                    List of Keldysh maps to be applied to the density matrix.
+    output_type  : str
+                   Type of output to be returned. Options are 'qutip' and 'numpy'.
+    """
 
     density = density.full()
     dimension = density.shape[-1]

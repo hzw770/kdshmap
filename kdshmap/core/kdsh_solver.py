@@ -5,7 +5,7 @@ import qutip as q
 import numpy as np
 
 from ..utils.propagator import propagator
-from ..utils.propagator import propagator_fft
+from ..utils.propagator import propagator_superop_fft
 
 from ..utils.map import filter_weight
 from ..utils.operations import damped_density, damped_densities, expect, decoh_error
@@ -20,7 +20,7 @@ from .error import generate_error_single, generate_errors
 class KeldyshSolver:
 
     prop_array: np.ndarray = None
-    prop_array_fft: np.ndarray = None
+    prop_superop_array_fft: np.ndarray = None
     fk_list_full: np.ndarray = None
     kdshmap_list: np.ndarray = None
     kdshmap_final: np.ndarray = None
@@ -32,7 +32,7 @@ class KeldyshSolver:
     expect: list = None
     error_list = None
     error_final: float = None
-    fft: list = None
+    filter_op: list = None
     e_ops: list = None
 
     def __init__(self,
@@ -46,11 +46,47 @@ class KeldyshSolver:
                  e_ops: list = None,
                  trunc_freq: Union[list, Tuple] = None,
                  options=q.Options(atol=1e-10, rtol=1e-10),
-                 solver: str = 'qutip',
+                 solver_type: str = 'qutip',
                  u0_list: np.ndarray = None,
-                 method: str = 'trapz',
+                 spd_renorm_method: str = 'trapz',
                  goal: str = None):
+        """
+        Attributes defined:
+        H              : Union[list, q.qobj.Qobj]
+                         Hamiltonian of the system. If list, it should contain Hamiltonian at each time step.
+        t_list_sub     : np.ndarray
+                         Time steps for which the map will be calculated.
+        minimal_step   : float
+                         Minimal time step for which maps are to be calculated.
+        noise_ops      : Union[list, q.qobj.Qobj]
+                         Noise operators for the system. If list, it should contain noise operators at each time step.
+        f_list         : Union[list, np.ndarray]
+                         List of frequencies for the noise operators.
+        Sf_list        : Union[list, np.ndarray]
+                         List of noise power spectral densities.
+        density0       : q.qobj.Qobj
+                         Initial density of the system.
+        U_target       : q.qobj.Qobj
+                         Target unitary operator.
+        e_ops          : list
+                         List of operators for which the expectation values will be calculated.
+        trunc_freq     : Union[list, Tuple]
+                         Frequency range for the noise operators.
+        options        : q.Options
+                         Options for the solver_type.
+        solver_type    : str
+                         solver_type for the propagator.
+        u0_list        : np.ndarray
+                         Closed system propagator
+        spd_renorm_method         : str
+                         method for the map calculation (trapz or sinc2).
+        goal           : str
+                         Goal of the calculation. If None or default, and expectation operators are provided,
+                         the expectation values will be calculated.
+                         If None or default and no expectation operators are provided, the final density will be calculated.
+                         Else the maps are generated and returned.
 
+        """
         if e_ops is None:
             e_ops = []
         if type(e_ops) != list:
@@ -66,9 +102,9 @@ class KeldyshSolver:
         self.e_ops = e_ops
         self.trunc_freq = trunc_freq
         self.options = options
-        self.solver = solver
+        self.solver_type = solver_type
         self.u0_list = u0_list
-        self.method = method
+        self.spd_renorm_method = spd_renorm_method
 
         if np.amax(self.t_list_sub) - np.amin(self.t_list_sub) != 0:
             N_expand = int((self.t_list_sub[1] - self.t_list_sub[0])/abs(self.minimal_step))
@@ -79,8 +115,8 @@ class KeldyshSolver:
             self.t_list_full = np.linspace(0, abs(np.amax(self.t_list_sub)),
                                            N_expand + 1)
 
-        self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=u0_list)
-        self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+        self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver_type=self.solver_type, u0_list=u0_list)
+        self.fk_list_full, self.prop_superop_array_fft = propagator_superop_fft(self.prop_array, self.t_list_full, trunc_freq=None)
 
         # If no specific goal is given, the goal will be speculated based on input
         if goal is None:
@@ -136,17 +172,24 @@ class KeldyshSolver:
 
     def plot_filter_Sf(self):
 
+        """
+        Class spd_renorm_method that plots the filter strengths and the noise power spectral density.
+        Returns:
+        ax : matplotlib.pyplot.Axes
+             Axes object containing the plot.
+        """
+
         if type(self.noise_ops) == q.qobj.Qobj:
             if any(x is None for x in [self.fk_list, self.filter_strength]):
-                if self.prop_array_fft is None:
+                if self.prop_superop_array_fft is None:
                     if self.prop_array is None:
-                        self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=self.u0_list)
-                    self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
-                self.fk_list, self.filter_strength, self.fft = filter_weight(self.prop_array, self.t_list_full, self.noise_ops,
-                                                                             self.trunc_freq, prop_array_fft=self.prop_array_fft)
+                        self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver_type=self.solver_type, u0_list=self.u0_list)
+                    self.fk_list_full, self.prop_superop_array_fft = propagator_superop_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+                self.fk_list, self.filter_strength, self.filter_op = filter_weight(self.prop_array, self.t_list_full, self.noise_ops,
+                                                                             self.trunc_freq, prop_superop_array_fft=self.prop_superop_array_fft)
 
             ax = plot_filter_Sf(self.H, self.t_list_full, self.noise_ops, self.f_list, self.Sf_list, trunc_freq=self.trunc_freq,
-                                options=self.options, solver=self.solver, u0_list=self.u0_list, filters=[self.fk_list, self.filter_strength])
+                                options=self.options, solver_type=self.solver_type, u0_list=self.u0_list, filters=[self.fk_list, self.filter_strength])
 
         elif type(self.noise_ops) == list:
 
@@ -155,38 +198,38 @@ class KeldyshSolver:
             else:
                 trunc_freq_list = self.trunc_freq
 
-            if any(x is None for x in [self.fk_list_full, self.prop_array_fft]):
-                self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+            if any(x is None for x in [self.fk_list_full, self.prop_superop_array_fft]):
+                self.fk_list_full, self.prop_superop_array_fft = propagator_superop_fft(self.prop_array, self.t_list_full, trunc_freq=None)
 
             if any(x is None for x in [self.fk_list, self.filter_strength]):
 
                 self.fk_list = [None] * len(self.noise_ops)
                 self.filter_strength = [None] * len(self.noise_ops)
-                self.fft = [None] * len(self.noise_ops)
+                self.filter_op = [None] * len(self.noise_ops)
 
                 for n_ in range(len(self.noise_ops)):
 
-                    self.fft[n_] = np.einsum('ijmkl,kl->ijm', self.prop_array_fft, self.noise_ops[n_].full())
-                    fft_dag = np.conjugate(np.swapaxes(self.fft[n_], 1, 2))
-                    fft_dag_fft = np.einsum('ijk,ikl->ijl', fft_dag, self.fft[n_])
+                    self.filter_op[n_] = np.einsum('ijmkl,kl->ijm', self.prop_superop_array_fft, self.noise_ops[n_].full())
+                    filter_op_dag = np.conjugate(np.swapaxes(self.filter_op[n_], 1, 2))
+                    filter_op_dag_filter_op = np.einsum('ijk,ikl->ijl', filter_op_dag, self.filter_op[n_])
 
-                    self.filter_strength[n_] = (np.trace(fft_dag_fft, axis1=1, axis2=2) -
-                                                abs(np.trace(self.fft[n_], axis1=1, axis2=2))**2/self.noise_ops[n_].shape[-1]).real
+                    self.filter_strength[n_] = (np.trace(filter_op_dag_filter_op, axis1=1, axis2=2) -
+                                                abs(np.trace(self.filter_op[n_], axis1=1, axis2=2))**2/self.noise_ops[n_].shape[-1]).real
 
                     self.fk_list[n_] = self.fk_list_full
 
                     if trunc_freq_list[n_] is not None:
                         argwhere = np.argwhere(self.fk_list[n_] <= trunc_freq_list[n_][1]).transpose()[0]
                         self.fk_list[n_] = self.fk_list[n_][argwhere]
-                        self.fft[n_] = self.fft[n_][argwhere]
+                        self.filter_op[n_] = self.filter_op[n_][argwhere]
                         self.filter_strength[n_] = self.filter_strength[n_][argwhere]
                         argwhere = np.argwhere(self.fk_list[n_] >= trunc_freq_list[n_][0]).transpose()[0]
                         self.fk_list[n_] = self.fk_list[n_][argwhere]
-                        self.fft[n_] = self.fft[n_][argwhere]
+                        self.filter_op[n_] = self.filter_op[n_][argwhere]
                         self.filter_strength[n_] = self.filter_strength[n_][argwhere]
 
             ax = plot_filter_Sf_multiple(self.H, self.t_list_full, self.noise_ops, self.f_list, self.Sf_list,
-                                         trunc_freq_list=trunc_freq_list, options=self.options, solver=self.solver, u0_list=self.u0_list,
+                                         trunc_freq_list=trunc_freq_list, options=self.options, solver_type=self.solver_type, u0_list=self.u0_list,
                                          filters_list=[self.fk_list, self.filter_strength])
 
         else:
@@ -196,18 +239,37 @@ class KeldyshSolver:
 
     def generate_map_final(self):
 
-        if self.prop_array is None:
-            self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=self.u0_list)
+        """
+        Class spd_renorm_method that generates the Keldysh map for the final time specified.
+        It also calculates the propagator and the Fourier transform of the propagator superoperator for the given frequencies.
+        Attributes added:
+        fk_list_full            : np.ndarray
+                                  List of frequencies for the fourier transform of the propagator superoperator.
+        prop_superop_array_fft  : np.ndarray
+                                  FFT samples of the propagator superoperator at the values specified by fk_list_full.
+        kdshmap_final           : np.ndarray
+                                  Keldysh map for the final time step.
+        fk_list                 : np.ndarray
+                                  List of frequencies for the noise operators.
+        Sfk_list                : np.ndarray
+                                  List of noise power spectral densities.
+        Returns:
+        kdshmap_final : np.ndarray
+                        Keldysh map for the final time step.
+        """
 
-        if any(x is None for x in [self.fk_list_full, self.prop_array_fft]):
-            self.fk_list_full, self.prop_array_fft = propagator_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+        if self.prop_array is None:
+            self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver_type=self.solver_type, u0_list=self.u0_list)
+
+        if any(x is None for x in [self.fk_list_full, self.prop_superop_array_fft]):
+            self.fk_list_full, self.prop_superop_array_fft = propagator_superop_fft(self.prop_array, self.t_list_full, trunc_freq=None)
 
         self.kdshmap_final, self.fk_list, self.Sfk_list = generate_map_single(self.H, self.t_list_full, self.noise_ops,
                                                                               self.f_list, self.Sf_list, trunc_freq=self.trunc_freq,
-                                                                              options=self.options, solver=self.solver,
-                                                                              u0_list=self.u0_list, method=self.method,
-                                                                              prop_array=self.prop_array, ffts=[self.fk_list, self.fft],
-                                                                              output='all', prop_array_fft=self.prop_array_fft,
+                                                                              options=self.options, solver_type=self.solver_type,
+                                                                              u0_list=self.u0_list, spd_renorm_method=self.spd_renorm_method,
+                                                                              prop_array=self.prop_array, filter_ops=[self.fk_list, self.filter_op],
+                                                                              output='all', prop_superop_array_fft=self.prop_superop_array_fft,
                                                                               fk_list=self.fk_list_full)
 
         return self.kdshmap_final
@@ -216,15 +278,20 @@ class KeldyshSolver:
 
         self.kdshmap_list = generate_maps(self.H, self.t_list_sub, self.minimal_step, self.noise_ops, self.f_list,
                                           self.Sf_list, t_list_full=self.t_list_full, trunc_freq=self.trunc_freq,
-                                          options=self.options, solver=self.solver, u0_list=self.u0_list,
-                                          method=self.method)
+                                          options=self.options, solver_type=self.solver_type, u0_list=self.u0_list,
+                                          spd_renorm_method=self.spd_renorm_method)
 
         return self.kdshmap_list
 
     def generate_error_final(self):
 
+        """
+        Class spd_renorm_method that calculates the error for the final time step specified.
+        If the target unitary is specified, the error is calculated as the difference between the realized map and the target unitary.
+        """
+
         if self.prop_array is None:
-            self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver=self.solver, u0_list=self.u0_list)
+            self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver_type=self.solver_type, u0_list=self.u0_list)
 
         if self.kdshmap_final is None:
             self.generate_map_final()
@@ -241,7 +308,22 @@ class KeldyshSolver:
         return None
 
     def generate_density_final(self, density0=None):
-
+        """
+        Class spd_renorm_method that generates the final density matrix for the system.
+        Attributes added:
+        fk_list_full            : np.ndarray
+                                  List of frequencies for the fourier transform of the propagator superoperator.
+        prop_superop_array_fft  : np.ndarray
+                                  FFT samples of the propagator superoperator at the values specified by fk_list_full.
+        kdshmap_final           : np.ndarray
+                                  Keldysh map for the final time step.
+        fk_list                 : np.ndarray
+                                  List of frequencies for the noise operators.
+        Sfk_list                : np.ndarray
+                                  List of noise power spectral densities.
+        density_final           : q.qobj.Qobj
+                                  Final density matrix for the system @t_list_sub[-1].
+        """
         if density0 is None:
             density0 = self.density0
 
@@ -259,12 +341,28 @@ class KeldyshSolver:
         return density_final
 
     def generate_densities(self, density0=None, output_type='numpy'):
+        """
+        Class spd_renorm_method that generates the density matrices for all the time steps in t_list_sub.
+        Attributes added:
+        density_list : np.ndarray
+                       List of density matrices for all the time steps in t_list_sub (numpy array).
+
+        Parameters:
+        density0     : q.qobj.Qobj
+                       Initial density matrix for the system.
+        output_type  : str
+                       Output type for the density matrices. Can be 'numpy' or 'qutip'.
+        Returns:
+        density_list : np.ndarray
+                       List of density matrices for all the time steps in t_list_sub.
+        """
+
 
         if density0 is None:
             density0 = self.density0
 
         if density0 is None:
-            raise Exception('No initial density given')
+            raise Exception('No initial density matrix provided')
 
         if self.kdshmap_list is None:
             self.generate_maps()
@@ -280,9 +378,26 @@ class KeldyshSolver:
             return damped_densities(density0, self.kdshmap_list, output_type='qutip')
 
         else:
-            raise Exception('No such data type')
+            raise Exception('Output cannot be specified in that datatype')
 
     def generate_expect(self, e_ops=None, density0=None):
+
+        """
+        Class spd_renorm_method that calculates the expectation values for the given operators.
+
+        Parameters:
+        e_ops     : list
+                    List of operators for which the expectation values will be calculated.
+                    If None, the operators specified in the object will be used.
+
+        density0  : q.qobj.Qobj
+                    Initial density matrix for the system.
+                    If None, the initial density matrix specified in the object will be used.
+
+        Returns:
+        expect_list : list
+                      List of expectation values for the list of given operators.
+        """
 
         if e_ops is None:
             if self.e_ops is None or self.e_ops == []:

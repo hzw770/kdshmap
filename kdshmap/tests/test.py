@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     solver = kd.KeldyshSolver(H, t_list, minimal_step, [n],
                               [f_list], [Sf_list], trunc_freq=[(-5, 5)], density0=q.basis(tmon_dim, 1)*q.basis(tmon_dim, 1).dag(),
-                              e_ops=[q.basis(tmon_dim, 1)*q.basis(tmon_dim, 1).dag()], method='trapz', goal='expect')
+                              e_ops=[q.basis(tmon_dim, 1)*q.basis(tmon_dim, 1).dag()], spd_renorm_method='trapz', goal='expect')
 
     plt.plot(t_list, solver.expect[0].real)
     plt.ylim(0.0, 1)
