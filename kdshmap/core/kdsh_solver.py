@@ -14,7 +14,6 @@ from .filter_func import plot_filter_Sf_multiple
 
 
 from .map_evol import generate_map_single, generate_maps
-from .error import generate_error_single, generate_errors
 
 
 class KeldyshSolver:
@@ -45,7 +44,7 @@ class KeldyshSolver:
                  density0: q.qobj.Qobj = None,
                  e_ops: list = None,
                  trunc_freq: Union[list, Tuple] = None,
-                 options=q.Options(atol=1e-10, rtol=1e-10),
+                 options = dict(atol=1e-10, rtol=1e-10),
                  solver_type: str = 'qutip',
                  u0_list: np.ndarray = None,
                  spd_renorm_method: str = 'trapz',
@@ -57,7 +56,7 @@ class KeldyshSolver:
         t_list_sub     : np.ndarray
                          Time steps for which the map will be calculated.
         minimal_step   : float
-                         Minimal time step for which maps are to be calculated.
+                         Minimal time step for which propagators are calculated. Should be small enough to describe the fastest oscillations in the quantum state.
         noise_ops      : Union[list, q.qobj.Qobj]
                          Noise operators for the system. If list, it should contain noise operators at each time step.
         f_list         : Union[list, np.ndarray]
@@ -72,7 +71,7 @@ class KeldyshSolver:
                          List of operators for which the expectation values will be calculated.
         trunc_freq     : Union[list, Tuple]
                          Frequency range for the noise operators.
-        options        : q.Options
+        options        : dict
                          Options for the solver_type.
         solver_type    : str
                          solver_type for the propagator.
@@ -87,6 +86,8 @@ class KeldyshSolver:
                          Else the maps are generated and returned.
 
         """
+        if options is None:
+            options = dict(atol=1e-10, rtol=1e-10)
         if e_ops is None:
             e_ops = []
         if type(e_ops) != list:
@@ -107,16 +108,17 @@ class KeldyshSolver:
         self.spd_renorm_method = spd_renorm_method
 
         if np.amax(self.t_list_sub) - np.amin(self.t_list_sub) != 0:
-            N_expand = int((self.t_list_sub[1] - self.t_list_sub[0])/abs(self.minimal_step))
+            self.N_expand = int((self.t_list_sub[1] - self.t_list_sub[0])/abs(self.minimal_step))
             self.t_list_full = np.linspace(np.amin(self.t_list_sub), np.amax(self.t_list_sub),
-                                           N_expand * (len(self.t_list_sub) - 1) + 1)
+                                           self.N_expand * (len(self.t_list_sub) - 1) + 1)
         else:
-            N_expand = int(abs(np.amax(self.t_list_sub)) / self.minimal_step)
+            self.N_expand = int(abs(np.amax(self.t_list_sub)) / self.minimal_step)
             self.t_list_full = np.linspace(0, abs(np.amax(self.t_list_sub)),
-                                           N_expand + 1)
+                                           self.N_expand + 1)
 
         self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver_type=self.solver_type, u0_list=u0_list)
         self.fk_list_full, self.prop_superop_array_fft = propagator_superop_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+        self.system_maps = None
 
         # If no specific goal is given, the goal will be speculated based on input
         if goal is None:
@@ -280,7 +282,8 @@ class KeldyshSolver:
                                           self.Sf_list, t_list_full=self.t_list_full, trunc_freq=self.trunc_freq,
                                           options=self.options, solver_type=self.solver_type, u0_list=self.u0_list,
                                           spd_renorm_method=self.spd_renorm_method)
-
+        if self.kdshmap_final is None:
+            self.kdshmap_final = self.kdshmap_list[-1]
         return self.kdshmap_list
 
     def generate_error_final(self):
@@ -305,7 +308,22 @@ class KeldyshSolver:
 
     def generate_errors(self):
 
-        return None
+        if self.prop_array is None:
+            self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver_type=self.solver_type, u0_list=self.u0_list)
+
+        if self.kdshmap_list is None:
+            self.generate_maps()
+
+
+        dimension = self.prop_array[-1].shape[-1]
+        self.error_list = np.zeros(len(self.kdshmap_list))
+        for t_, kdshmap_t in enumerate(self.kdshmap_list):
+            decoh_map = np.einsum('jk,lm->jmkl', np.conjugate(np.swapaxes(self.prop_array[int(self.N_expand * t_)], 0, 1)),
+                                 self.prop_array[int(self.N_expand * t_)])
+            decoh_map = np.matmul(decoh_map.reshape(dimension * dimension, dimension * dimension), kdshmap_t)
+            self.error_list[t_] = decoh_error(decoh_map).real
+
+        return
 
     def generate_density_final(self, density0=None):
         """
@@ -411,17 +429,24 @@ class KeldyshSolver:
 
         if density0 is None:
             density0 = self.density0
-
-        if density0 != self.density0 or self.density_list is None:
-            density_list = self.generate_densities(density0=density0)
-        else:
+            self.density_list = self.generate_densities(density0=density0)
             density_list = self.density_list
+        else:
+            density_list = self.generate_densities(density0=density0)
 
         expect_list = expect(density0, self.e_ops, damped_density_list=density_list)
         if self.density0 == density0:
             self.expect = expect_list
 
-        return expect_list
+        if self.system_maps is None:
+            self.system_maps = self.kdshmap_list * 0
+            dimension = self.prop_array[-1].shape[-1]
+            for t_ in range(len(self.t_list_sub)):
+                self.system_maps[t_] = np.einsum('jk,lm->jmkl', self.prop_array[int(self.N_expand*t_)], np.conjugate(np.swapaxes(self.prop_array[int(self.N_expand*t_)], 0, 1))).reshape(dimension * dimension, dimension * dimension)
+
+        expect_noise_free_list = expect(density0, self.e_ops, kdshmap_list=self.system_maps)
+
+        return expect_list, expect_noise_free_list
 
     def calc_all(self):
 

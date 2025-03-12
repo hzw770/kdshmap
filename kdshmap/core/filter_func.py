@@ -15,7 +15,7 @@ def generate_filter(H: Union[list, q.qobj.Qobj],
                     t_list: np.ndarray,
                     noise_op: q.qobj.Qobj,
                     trunc_freq: Tuple = None,
-                    options=q.Options(atol=1e-10, rtol=1e-10),
+                    options = dict(atol=1e-10, rtol=1e-10),
                     solver_type: str = 'qutip',
                     u0_list: np.ndarray = None,
                     prop_array: np.ndarray = None,
@@ -33,7 +33,7 @@ def generate_filter(H: Union[list, q.qobj.Qobj],
     trunc_freq              : Tuple
                               Tuple of the lower and upper frequency bounds for the filter strength.
 
-    options                 : q.Options
+    options                 : dict
                               Options for the solver_type.
 
     solver_type             : str
@@ -57,7 +57,7 @@ def generate_filter(H: Union[list, q.qobj.Qobj],
     return fk_list, filter_strength
 
 
-def plot_filter(H, t_list, noise_op, trunc_freq=None, options=q.Options(atol=1e-10, rtol=1e-10), solver_type='qutip', u0_list=None,
+def plot_filter(H, t_list, noise_op, trunc_freq=None, options=dict(atol=1e-10, rtol=1e-10), solver_type='qutip', u0_list=None,
                 filters=None, ax=None, prop_array: np.ndarray = None, prop_superop_array_fft: np.ndarray = None):
 
 
@@ -74,7 +74,7 @@ def plot_filter(H, t_list, noise_op, trunc_freq=None, options=q.Options(atol=1e-
                               Noise operator for which the filter strength is calculated.
     trunc_freq              : Tuple
                               Tuple of the lower and upper frequency bounds for the filter strength.
-    options                 : q.Options
+    options                 : dict
                               Options for the solver_type.
     solver_type             : str
                               Specifies the solver_type to be used.
@@ -119,7 +119,7 @@ def plot_filter_Sf(H: Union[list, q.qobj.Qobj],
                    f_list: np.ndarray,
                    Sf_list: np.ndarray,
                    trunc_freq: Tuple = None,
-                   options=q.Options(atol=1e-10, rtol=1e-10),
+                   options=dict(atol=1e-10, rtol=1e-10),
                    solver_type: str = 'qutip',
                    u0_list: np.ndarray = None,
                    filters: list = None,
@@ -142,7 +142,7 @@ def plot_filter_Sf(H: Union[list, q.qobj.Qobj],
                               Bath spectral density evaluated at the frequencies in f_list.
     trunc_freq              : Tuple
                               Bounds for the plot
-    options                 : q.Options
+    options                 : dict
                               Options for the solver_type.
     solver_type             : str
                               Specifies the solver_type to be used.
@@ -189,7 +189,7 @@ def plot_filter_Sf_multiple(H: Union[list, q.qobj.Qobj],
                             f_list_list: list,
                             Sf_list_list: list,
                             trunc_freq_list: list = None,
-                            options=q.Options(atol=1e-10, rtol=1e-10),
+                            options=dict(atol=1e-10, rtol=1e-10),
                             solver_type: str = 'qutip',
                             u0_list: np.ndarray = None,
                             filters_list: list = None,
@@ -209,7 +209,7 @@ def plot_filter_Sf_multiple(H: Union[list, q.qobj.Qobj],
                               Noise operator for which the filter strength is calculated.
     trunc_freq              : Tuple
                               Tuple of the lower and upper frequency bounds for the filter strength.
-    options                 : q.Options
+    options                 : dict
                               Options for the solver_type.
     solver_type             : str
                               Specifies the solver_type to be used.

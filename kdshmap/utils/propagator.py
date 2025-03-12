@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sp
 
 
-def propagator(H, t_list, options=q.Options(atol=1e-10, rtol=1e-10), solver_type='qutip',
+def propagator(H, t_list, options=dict(atol=1e-10, rtol=1e-10), solver_type='qutip',
                u0_list: np.ndarray = None):
 
     """
@@ -17,7 +17,7 @@ def propagator(H, t_list, options=q.Options(atol=1e-10, rtol=1e-10), solver_type
     t_list    : numpy array
                 List of time values at which to calculate the propagator
 
-    options   : qutip.Options (optional)
+    options   : dict
                 Options for the solver_type, default is atol=1e-10, rtol=1e-10
     solver_type    : str (optional)
                 solver_type to be used, either 'qutip' or 'magnus'
@@ -94,7 +94,7 @@ def propagator_superop_fft(prop_array, t_list, trunc_freq=None):
     return fk_list, prop_superop_array_fft
 
 
-def propagator_rotate(H_rot, t_list, options=q.Options(atol=1e-10, rtol=1e-10), solver_type='qutip'):
+def propagator_rotate(H_rot, t_list, options=dict(atol=1e-10, rtol=1e-10), solver_type='qutip'):
     # Rotated propagator in a rotating frame, will be constructed later
     if solver_type == 'qutip':
         return q.propagator(H_rot, t_list, options=options, c_ops=[])

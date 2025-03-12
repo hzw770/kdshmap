@@ -22,7 +22,7 @@ if __name__ == "__main__":
     env = np.exp(-(t_list_full-t_list_full[-1]/2)**2/(t_list_full[-1]/2)**2)
     env = env - np.min(env)
     drive_list = 2*np.pi*0.3*np.cos((wq+0.00)*t_list_full) * env
-    H = [H, [n, q.interpolate.Cubic_Spline(0, t_list_full[-1], drive_list)]]
+    H = [H, [n, sp.interpolate.CubicSpline(t_list_full, drive_list)]]
 
     # kdshsolver
     t_list = np.linspace(0, 40, 81)

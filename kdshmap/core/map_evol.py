@@ -22,7 +22,7 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
                         f_list: Union[list, np.ndarray],
                         Sf_list: Union[list, np.ndarray],
                         trunc_freq: Union[Tuple, list] = None,
-                        options=q.Options(atol=1e-10, rtol=1e-10),
+                        options=dict(atol=1e-10, rtol=1e-10),
                         solver_type: str = 'qutip',
                         u0_list: np.ndarray = None,
                         spd_renorm_method: str = 'trapz',
@@ -58,9 +58,9 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
     trunc_freq                  : Union[Tuple, list]
                                   The frequency range of the noise operator(s) that will be considered in the calculation.
 
-    options                     : q.Options
+    options                     : dict
                                   Options for the solver.
-                                  Default options are q.Options(atol=1e-10, rtol=1e-10)
+                                  Default options are dict(atol=1e-10, rtol=1e-10)
 
     solver_type                 : str
                                   The solver to be used for the propagator.
@@ -182,7 +182,7 @@ def generate_maps(H: Union[list, q.qobj.Qobj],
                   Sf_list: Union[list, np.ndarray],
                   t_list_full: np.ndarray = None,
                   trunc_freq: Union[Tuple, list] = None,
-                  options=q.Options(atol=1e-10, rtol=1e-10),
+                  options=dict(atol=1e-10, rtol=1e-10),
                   solver_type: str = 'qutip',
                   u0_list: np.ndarray = None,
                   spd_renorm_method: str = 'trapz',
