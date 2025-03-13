@@ -58,6 +58,8 @@ def filter_weight(prop_array, t_list, noise_op, trunc_freq=None, prop_superop_ar
         filter_strength = filter_strength[argwhere]
         filter_op = filter_op[argwhere]
         argwhere = np.argwhere(fk_list >= trunc_freq[0]).transpose()[0]
+        if len(argwhere) == 0:
+            raise Exception('no filter_ops, change trunc_freq')
         fk_list = fk_list[argwhere]
         filter_strength = filter_strength[argwhere]
         filter_op = filter_op[argwhere]
@@ -161,6 +163,7 @@ def kdshmap_multi_n_ops(filter_op_list: list, Sfk_list_list: list, t):
                      Time value at which the Keldysh map is calculated
 
     """
+
     dimension = filter_op_list[0][0].shape[-1]
     lindb = np.zeros((dimension*dimension, dimension*dimension), dtype=complex)
     for n_ in range(len(filter_op_list)):

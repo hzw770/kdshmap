@@ -226,6 +226,8 @@ class KeldyshSolver:
                         self.filter_op[n_] = self.filter_op[n_][argwhere]
                         self.filter_strength[n_] = self.filter_strength[n_][argwhere]
                         argwhere = np.argwhere(self.fk_list[n_] >= trunc_freq_list[n_][0]).transpose()[0]
+                        if len(argwhere) == 0:
+                            raise Exception('no filter_ops, change trunc_freq')
                         self.fk_list[n_] = self.fk_list[n_][argwhere]
                         self.filter_op[n_] = self.filter_op[n_][argwhere]
                         self.filter_strength[n_] = self.filter_strength[n_][argwhere]

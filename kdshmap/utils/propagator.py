@@ -88,6 +88,8 @@ def propagator_superop_fft(prop_array, t_list, trunc_freq=None):
         fk_list = fk_list[argwhere]
         prop_superop_array_fft = prop_superop_array_fft[argwhere]
         argwhere = np.argwhere(fk_list >= trunc_freq[0]).transpose()[0]
+        if len(argwhere) == 0:
+            raise Exception('no filter_ops, change trunc_freq')
         fk_list = fk_list[argwhere]
         prop_superop_array_fft = prop_superop_array_fft[argwhere]
 

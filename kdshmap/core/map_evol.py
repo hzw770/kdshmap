@@ -160,8 +160,11 @@ def generate_map_single(H: Union[list, q.qobj.Qobj],
                     fk_list_list[n_] = fk_list_list[n_][argwhere]
                     filter_op_list[n_] = filter_op_list[n_][argwhere]
                     argwhere = np.argwhere(fk_list_list[n_] >= trunc_freq[n_][0]).transpose()[0]
+                    if len(argwhere) == 0:
+                        raise Exception('no filter_ops, change trunc_freq')
                     fk_list_list[n_] = fk_list_list[n_][argwhere]
                     filter_op_list[n_] = filter_op_list[n_][argwhere]
+
 
         fk_list_list[n_], Sfk_list_list[n_] = Sf_renorm(Sf_list[n_], f_list[n_], t_list, spd_renorm_method=spd_renorm_method,
                                                         trunc_freq=trunc_freq[n_], fk_list_input=fk_list_list[n_])
