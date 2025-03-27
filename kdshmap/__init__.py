@@ -1,4 +1,5 @@
 from .core.filter_func import generate_filter
+from .core.filter_func import generate_filter_for_state
 from .core.filter_func import plot_filter
 from .core.filter_func import plot_filter_Sf
 from .core.filter_func import plot_filter_Sf_multiple

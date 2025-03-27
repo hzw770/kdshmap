@@ -7,9 +7,9 @@ import numpy as np
 from ..utils.propagator import propagator
 from ..utils.propagator import propagator_superop_fft
 
-from ..utils.map import filter_weight
+from ..utils.map import filter_weight, filter_weight_for_state
 from ..utils.operations import damped_density, damped_densities, expect, decoh_error
-from .filter_func import plot_filter_Sf
+from .filter_func import plot_filter_Sf, plot_filter_Sf_for_state, plot_filter_Sf_for_state_multiple
 from .filter_func import plot_filter_Sf_multiple
 
 
@@ -240,6 +240,50 @@ class KeldyshSolver:
             raise Exception('Wrong noise op type')
 
         return ax
+
+
+    def plot_filter_Sf_for_state(self):
+
+        """
+        Class spd_renorm_method that plots the filter strengths and the noise power spectral density.
+        Returns:
+        ax : matplotlib.pyplot.Axes
+             Axes object containing the plot.
+        """
+        if self.density0 is None:
+            raise Exception('density0 must be set')
+
+        if type(self.noise_ops) == q.qobj.Qobj:
+            if self.prop_superop_array_fft is None:
+                if self.prop_array is None:
+                    self.prop_array = propagator(self.H, self.t_list_full, options=self.options, solver_type=self.solver_type, u0_list=self.u0_list)
+                self.fk_list_full, self.prop_superop_array_fft = propagator_superop_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+
+            ax = plot_filter_Sf_for_state(self.H, self.density0, self.t_list_full, self.noise_ops, self.f_list, self.Sf_list, trunc_freq=self.trunc_freq,
+                                options=self.options, solver_type=self.solver_type, u0_list=self.u0_list, filters=None)
+
+        elif type(self.noise_ops) == list:
+
+            if type(self.trunc_freq) != list:
+                trunc_freq_list = [None] * len(self.noise_ops)
+            else:
+                trunc_freq_list = self.trunc_freq
+
+            if any(x is None for x in [self.fk_list_full, self.prop_superop_array_fft]):
+                self.fk_list_full, self.prop_superop_array_fft = propagator_superop_fft(self.prop_array, self.t_list_full, trunc_freq=None)
+
+
+            ax = plot_filter_Sf_for_state_multiple(self.H, self.density0, self.t_list_full, self.noise_ops, self.f_list, self.Sf_list,
+                                         trunc_freq_list=trunc_freq_list, options=self.options, solver_type=self.solver_type, u0_list=self.u0_list,
+                                         filters_list=None)
+
+        else:
+            raise Exception('Wrong noise op type')
+
+        return ax
+
+
+
 
     def generate_map_final(self):
 
