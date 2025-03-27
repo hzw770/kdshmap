@@ -32,7 +32,7 @@ def propagator(H, t_list, options=dict(atol=1e-10, rtol=1e-10), solver_type='qut
 
     if solver_type == 'qutip':
         prop_qobj = q.propagator(H, t_list, options=options, c_ops=[])
-        prop_array = np.zeros((len(t_list), prop_qobj[0].dims[0][0], prop_qobj[0].dims[0][0]), dtype=complex)
+        prop_array = np.zeros((len(t_list), prop_qobj[0].shape[0], prop_qobj[0].shape[0]), dtype=complex)
         if u0_list is None:
             for t_ in range(len(t_list)):
                 prop_array[t_] = prop_qobj[t_].full()
