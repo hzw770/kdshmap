@@ -9,6 +9,14 @@ from .core.map_evol import generate_maps
 from .core.map_evol import generate_map_single
 from .core.kdsh_solver import KeldyshSolver
 
+### newly added
+from .core.filter_func_stabilized import plot_filter_Sf_stabilized_for_state
+from .core.filter_func_stabilized import plot_filter_Sf_stabilized_for_state_multiple
+from .core.filter_func_stabilized import plot_filter_stabilized_for_state
+
+
+
 from .utils.operations import damped_density
 from .utils.operations import damped_densities
+
 
