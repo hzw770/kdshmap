@@ -2,6 +2,7 @@ import qutip as q
 import numpy as np
 import scipy as sp
 import copy
+from pathos.multiprocessing import ProcessingPool
 
 def propagator_stabilized_superop_fft(H, noise_op, c_ops, t_list, options=dict(atol=1e-10, rtol=1e-10), solver_type='qutip'):
 
@@ -21,11 +22,24 @@ def propagator_stabilized_superop_fft(H, noise_op, c_ops, t_list, options=dict(a
         prop_inv_list = np.zeros((len(t_list)-1, dimension*dimension, dimension*dimension), dtype=complex)
         prop_final = np.eye(dimension*dimension, dimension*dimension)
 
+        def run(t_):
+            time_slice = np.linspace(t_list[t_], t_list[t_ + 1], 2)
+            prop_t_ = (q.propagator(H, time_slice, options=options, c_ops=c_ops)[-1]).full()
+            prop_inv_t_ = np.linalg.inv(prop_t_)
+            return prop_t_, prop_inv_t_
+
+        results = ProcessingPool().map(run, np.arange(0, len(t_list)-1))
+
         for t_ in range(len(t_list)-1):
-            time_slice = np.linspace(t_list[t_], t_list[t_+1], 2)
-            prop_list[t_] = (q.propagator(H, time_slice, options=options, c_ops=c_ops)[-1]).full()
-            prop_inv_list[t_] = np.linalg.inv(prop_list[t_])
+            prop_list[t_] = results[t_][0]
+            prop_inv_list[t_] = results[t_][1]
             prop_final = np.einsum('ij,jk->ik', prop_list[t_], prop_final)
+
+        # for t_ in range(len(t_list)-1):
+        #     time_slice = np.linspace(t_list[t_], t_list[t_+1], 2)
+        #     prop_list[t_] = (q.propagator(H, time_slice, options=options, c_ops=c_ops)[-1]).full()
+        #     prop_inv_list[t_] = np.linalg.inv(prop_list[t_])
+        #     prop_final = np.einsum('ij,jk->ik', prop_list[t_], prop_final)
 
         for t_ in range(len(t_list)-1):
             noise_op_t_left[t_+1] = copy.deepcopy(noise_op_t_left[0])
@@ -43,23 +57,6 @@ def propagator_stabilized_superop_fft(H, noise_op, c_ops, t_list, options=dict(a
     fk_list = -np.fft.fftfreq(len(t_list)-1, t_list[1]-t_list[0])
     noise_op_t_left_fft = np.fft.fft(noise_op_t_left[0:len(t_list)-1], axis=0)/(len(t_list)-1)
     noise_op_t_right_fft = np.fft.fft(noise_op_t_right[0:len(t_list)-1], axis=0)/(len(t_list)-1)
-
-    # argsort = np.argsort(fk_list)
-    # fk_list = fk_list[argsort]
-    # noise_op_t_left_fft = noise_op_t_left_fft[argsort]
-    # noise_op_t_right_fft = noise_op_t_right_fft[argsort]
-
-    # if trunc_freq is not None:
-    #     argwhere = np.argwhere(fk_list <= trunc_freq[1]).transpose()[0]
-    #     fk_list = fk_list[argwhere]
-    #     noise_op_t_left_fft = noise_op_t_left_fft[argwhere]
-    #     noise_op_t_right_fft = noise_op_t_right_fft[argwhere]
-    #     argwhere = np.argwhere(fk_list >= trunc_freq[0]).transpose()[0]
-    #     if len(argwhere) == 0:
-    #         raise Exception('no filter_ops, change trunc_freq')
-    #     fk_list = fk_list[argwhere]
-    #     noise_op_t_left_fft = noise_op_t_left_fft[argwhere]
-    #     noise_op_t_right_fft = noise_op_t_right_fft[argwhere]
 
     return fk_list, noise_op_t_left_fft, noise_op_t_right_fft, prop_final
 
