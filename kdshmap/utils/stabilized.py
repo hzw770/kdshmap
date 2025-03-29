@@ -72,13 +72,13 @@ def filter_weight_stabilized_for_state(noise_op_t_left_fft, noise_op_t_right_fft
     noise_op_t_left_fft = noise_op_t_left_fft[argsort]
     noise_op_t_right_fft = noise_op_t_right_fft[argsort]
 
-    if len(fk_list) % 2 == 0:
-        fk_list = fk_list[:-1]
-        noise_op_t_left_fft = noise_op_t_left_fft[:-1]
-        noise_op_t_right_fft = noise_op_t_right_fft[:-1]
+    # if len(fk_list) % 2 == 0:
+    #     fk_list = fk_list[:-1]
+    #     noise_op_t_left_fft = noise_op_t_left_fft[:-1]
+    #     noise_op_t_right_fft = noise_op_t_right_fft[:-1]
 
-    noise_op_t_left_dag_fft = noise_op_t_left_fft[::-1]
-    noise_op_t_right_dag_fft = noise_op_t_right_fft[::-1]
+    noise_op_t_left_dag_fft = np.conjugate(np.einsum('ijk->ikj', noise_op_t_left_fft))
+    noise_op_t_right_dag_fft = np.conjugate(np.einsum('ijk->ikj', noise_op_t_right_fft))
 
     lindb =  0.5 * np.einsum('ijk,ikl->ijl', noise_op_t_left_fft, noise_op_t_right_dag_fft)
     lindb += 0.5 * np.einsum('ijk,ikl->ijl', noise_op_t_right_dag_fft, noise_op_t_left_fft)
@@ -91,7 +91,7 @@ def filter_weight_stabilized_for_state(noise_op_t_left_fft, noise_op_t_right_fft
     density = density.reshape(dimension*dimension)
 
     density = q.operator_to_vector(density0).full().reshape(dimension*dimension)
-    
+
 
     density_decay = np.einsum('ijk,k->ij', lindb, density)
     density_decay = density_decay.reshape(len(fk_list), dimension, dimension)
