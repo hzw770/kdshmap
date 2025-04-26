@@ -13,7 +13,7 @@ from .core.filter_func_stabilized import plot_filter_Sf_stabilized_for_state
 from .core.filter_func_stabilized import plot_filter_Sf_stabilized_for_state_multiple
 from .core.filter_func_stabilized import plot_filter_stabilized_for_state
 from .core.filter_func_stabilized import generate_filter_stabilized_for_state
-
+from .core.filter_func_stabilized import propagator_stabilized_superop_fft
 
 from .utils.operations import damped_density
 from .utils.operations import damped_densities

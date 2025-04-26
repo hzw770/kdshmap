@@ -17,8 +17,7 @@ def generate_filter_stabilized_for_state(H: Union[list, q.qobj.Qobj],
                     options = dict(atol=1e-10, rtol=1e-10),
                     solver_type: str = 'qutip',
                     u0_list: np.ndarray = None,
-                    noise_op_t_left_fft: np.ndarray = None,
-                    noise_op_t_right_fft: np.ndarray = None,
+                    prop_fft: np.array = None,
                     prop_final = None):
     """
     Generate the filter strength for a given noise operator.
@@ -48,16 +47,16 @@ def generate_filter_stabilized_for_state(H: Union[list, q.qobj.Qobj],
                               Array of the Fourier transformed propagator superoperators.
 
     """
-    if any(element is None for element in [noise_op_t_left_fft, noise_op_t_right_fft, prop_final]):
-        fk_list, noise_op_t_left_fft, noise_op_t_right_fft, prop_final = propagator_stabilized_superop_fft(H, noise_op, c_ops, t_list, options, solver_type)
+    if any(element is None for element in [prop_fft, prop_final]):
+        fk_list, prop_fft, prop_final = propagator_stabilized_superop_fft(H, c_ops, t_list, options, solver_type)
 
-    fk_list, filter_weights_state = filter_weight_stabilized_for_state(noise_op_t_left_fft, noise_op_t_right_fft, prop_final, density0, t_list, trunc_freq)
+    fk_list, filter_weights_state = filter_weight_stabilized_for_state(prop_fft, prop_final, noise_op, density0, t_list, trunc_freq)
     return fk_list, filter_weights_state
 
 
-def plot_filter_stabilized_for_state(H, density0, t_list, noise_op, c_ops,trunc_freq=None, options=dict(atol=1e-10, rtol=1e-10), solver_type='qutip', u0_list=None,
-                 ax=None, noise_op_t_left_fft: np.ndarray = None, noise_op_t_right_fft: np.ndarray = None,
-                    prop_final = None):
+def plot_filter_stabilized_for_state(H, density0, t_list, noise_op, c_ops,trunc_freq=None, options=dict(atol=1e-10, rtol=1e-10),
+                                     solver_type='qutip', u0_list=None,
+                                     ax=None, prop_fft = None,prop_final = None):
 
 
     """
@@ -91,7 +90,7 @@ def plot_filter_stabilized_for_state(H, density0, t_list, noise_op, c_ops,trunc_
     """
 
 
-    fk_list, filter_weights_state = generate_filter_stabilized_for_state(H, density0, t_list, noise_op, c_ops, trunc_freq, options, solver_type, u0_list, noise_op_t_left_fft, noise_op_t_right_fft, prop_final)
+    fk_list, filter_weights_state = generate_filter_stabilized_for_state(H, density0, t_list, noise_op, c_ops, trunc_freq, options, solver_type, u0_list, prop_fft, prop_final)
 
     if ax is None:
         ax = plt.subplot()
@@ -116,7 +115,7 @@ def plot_filter_Sf_stabilized_for_state(H: Union[list, q.qobj.Qobj],
                    options=dict(atol=1e-10, rtol=1e-10),
                    solver_type: str = 'qutip',
                    u0_list: np.ndarray = None,
-                   ax=None, noise_op_t_left_fft=None, noise_op_t_right_fft=None,
+                   ax=None, prop_fft = None,
                    prop_final = None):
 
     """
@@ -159,7 +158,7 @@ def plot_filter_Sf_stabilized_for_state(H: Union[list, q.qobj.Qobj],
         ax = plt.subplot()
 
     plot_filter_stabilized_for_state(H, density0, t_list, noise_op, c_ops, trunc_freq, options, solver_type, u0_list,
-                 ax, noise_op_t_left_fft, noise_op_t_right_fft, prop_final)
+                 ax, prop_fft, prop_final)
 
     ax2 = ax.twinx()
     ax2.plot(f_list, Sf_list, lw=2, alpha=1, color='k')
@@ -186,7 +185,7 @@ def plot_filter_Sf_stabilized_for_state_multiple(H: Union[list, q.qobj.Qobj],
 
     if len(noise_ops) == 1:
         return plot_filter_Sf_stabilized_for_state(H, density0, t_list, noise_ops[0], c_ops, f_list_list[0], Sf_list_list[0], trunc_freq=trunc_freq_list[0],
-                              options=options, solver_type=solver_type, u0_list=u0_list, ax=None, noise_op_t_left_fft=None, noise_op_t_right_fft=None, prop_final=None)
+                              options=options, solver_type=solver_type, u0_list=u0_list, ax=None, prop_fft=None, prop_final=None)
 
     if ax is None:
         fig, ax = plt.subplots(len(noise_ops), 1)
@@ -199,6 +198,6 @@ def plot_filter_Sf_stabilized_for_state_multiple(H: Union[list, q.qobj.Qobj],
             trunc_freq = trunc_freq_list[n_]
 
         plot_filter_Sf_stabilized_for_state(H, density0, t_list, noise_ops[n_], c_ops, f_list_list[n_], Sf_list_list[n_], trunc_freq=trunc_freq,
-                       options=options, solver_type=solver_type, u0_list=u0_list, ax=ax[n_], noise_op_t_left_fft=None, noise_op_t_right_fft=None, prop_final=None)
+                       options=options, solver_type=solver_type, u0_list=u0_list, ax=ax[n_])
     plt.tight_layout()
     return ax
